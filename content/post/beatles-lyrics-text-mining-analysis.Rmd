@@ -1,7 +1,7 @@
 ---
 title: "Beatles’s Studio Album Text Mining Analysis"
 author: "Douglas Zickuhr"
-date: 2018-08-28T19:59:00+00:00
+date: 2018-08-29T19:59:00+00:00
 categories: ["R"]
 tags: ["R Markdown", "textmining", "tidytext"]
 ---
@@ -70,32 +70,27 @@ write_csv(album_lyrics,"tidytext/data/beatles_lyrics.csv")
 In order to certify that the file is correct, let's import it and check how's the sctructure of that file.
 ```{r reading dataset}
 lyrics <- read_csv("data/beatles_lyrics.csv")
+kable(head(lyrics))
 ```
 
-# Tidying the data
-I like to see the shape and the head of the dataframe before go ahead with the analysis.
-```{r checking the dataset}
-kable(lyrics)
-glimpse(lyrics)
-```
 It is possible to see that each observation is a sentence and for that analysis I want to have the words tokenized individually. That's where the package tidytext moves into action.
 
-
+# Tidying the data
 The function to tokenize the text is unnest_tokens. It is possible to apply different types of tokenizer, the most simple one is to tokenize into single words.
 ```{r tidying the dataset}
+# Tokenizing the lyrics
 lyrics <- lyrics %>%
   unnest_tokens(output = word, input = lyric)
+
+# Checking the head of the tidy dataframe
+kable(head(lyrics))
 ```
 
-```{r}
-kable(lyrics)
-```
+Before go any further there is something I'd like to do. Make sure that the albums are going to be arranged according to their releasing date. I had done that already when I was requesting the data to Genius, so I am going to use the same vector but now applying the function str_to_title. This is just because I wanted to see "Please Please Me" on my plots and not "please please me", for intance.
 
-
+It's nice that you can relevel the factors with fct_relevel from forcats package using !!! (should I call that bang-bang-bang?) to set the parameter. In that case, my parameter is my character vector with the albums arranged by release date and looking nicer because of the str_to_title function.
 ```{r ordering albums by releasing date}
-album_names <- c("please please me", "with the beatles", "a hard day's night", "beatles for sale",
-       "help","rubber soul","revolver","sgt pepper's lonely hearts club band", "magical mystery tour",
-       "the beatles (the white album)","yellow submarine", "abbey road", "let it be")  %>%
+album_names <- albums %>%
   str_to_title()
 
 lyrics <- lyrics %>%
@@ -103,11 +98,13 @@ lyrics <- lyrics %>%
   mutate(album_title = str_to_title(album_title)) %>%
   mutate(album_title = fct_relevel(album_title, !!!album_names))
 ```
+Please note that I've removed the NA words. I don't quite understand why some words were identified by NA. That should 
 
 
 ```{r removing stop words, echo=FALSE}
 lyrics_no_sw <- lyrics %>%
-  anti_join(stop_words,by="word")
+  anti_join(stop_words,
+            by="word")
 ```
 
 ```{r wordcloud}
