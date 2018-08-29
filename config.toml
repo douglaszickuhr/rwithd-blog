@@ -1,0 +1,58 @@
+baseurl = "http://rwithd.com/"
+title = "RWithD"
+theme = "ghostwriter"
+languageCode = "en-us"
+copyright = "My Name"
+disqusShortname = "XXX"
+googleAnalytics = "XXX"
+
+[Privacy]
+
+[Privacy.disqus]
+    disable = true
+
+[Privacy.googleAnalytics]
+    anonymizeIP = true
+    respectDoNotTrack = true
+    useSessionStorage = false
+
+[Author]
+    name = "Douglas Zickuhr"
+
+[Taxonomies]
+    tag = "tags"
+
+[Params]
+    intro = true
+    headline = "RwithD"
+    description = "Sharing tips about Data Science and Technology"
+    github = "https://github.com/douglaszickuhr"
+    linkedin = "https://linkedin.com/in/douglaszickuhr/"
+    twitter = "https://twitter.com/douglaszickuhr"
+    email = "douglasrsl@gmail.com"
+    opengraph = true
+    shareTwitter = true
+    shareFacebook = true
+    shareGooglePlus = true
+    shareLinkedIn = false
+    dateFormat = "Mon, Jan 2, 2006"
+    highlightJsUrl = ""
+    highlightJsLocalUrl = ""
+
+[Permalinks]
+    post = "/:year/:month/:day/:filename/"
+
+[[menu.main]]
+    name = "Blog"
+    url = "/"
+    weight = 1
+
+[[menu.main]]
+    name = "Contact"
+    url = "/page/contact/"
+    weight = 2
+
+[[menu.main]]
+    name = "About"
+    url = "/page/about/"
+    weight = 3

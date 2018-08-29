@@ -1,0 +1,414 @@
+---
+title: "Beatles’s Studio Album Text Mining Analysis"
+author: "Douglas Zickuhr"
+date: 2018-08-28T19:59:00+00:00
+categories: ["R"]
+tags: ["R Markdown", "textmining", "tidytext"]
+---
+
+![](/post/2018-08-29-beatles_files/beatles68.jpg)
+
+# Introduction
+The Beatles is probably the most well known rock band from all times. They've been recognised by their inventive music and the revolution they've caused on human culture. Well, I don't think that they need further introduction. 
+
+Having that in mind and considering the fact that I've had just finished to read the book Text Mining with R by Julia Silge and David Robson, I decided that would be a good exercise to apply some of the techinques and examples from that book on this text mining analysis.
+
+I will be essentially using the tidiverse for data manipulation and visualisation and tidytext package for text mining analysis.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE)
+```
+
+
+```{r loading libraries, include=FALSE}
+library(tidyverse)
+library(tidytext)
+library(wordcloud)
+library(dplyr)
+library(scales)
+library(knitr)
+library(ggraph)
+library(igraph)
+library(googleLanguageR)
+library(geniusR)
+```
+
+# Gathering the data
+
+The first task was to gather all the information I needed. There are several pages with lyrics but genius seems to be on of the most utilised. In order to request that information, I've used a package called geniusR.
+```{r genius parameters, eval = FALSE}
+# Creating variables for artist and albums to be requested to geniusR
+artist <- "the beatles"
+albums <- c("please please me", "with the beatles", "a hard day's night", "beatles for sale",
+            "help","rubber soul","revolver","sgt pepper's lonely hearts club band", "magical mystery tour",
+            "the beatles (the white album)","yellow submarine", "abbey road", "let it be") 
+
+# Creating a tibble to be used on the requests
+search_parameters <- tibble(
+  artist = rep(artist,length(albums)),
+  albums = albums
+)
+```
+
+The function genius_album from the geniusR package was very handy for my needs. Combining with the map2 function from purrr package make it easier to request all the lyrics from each of the Beatles's studio albums.
+```{r requesting the lyrics, eval = FALSE}
+# Requesting the lyrics to Genius
+album_lyrics <- search_parameters %>% 
+  mutate(tracks = map2(artist, albums, genius_album)) %>%
+  rename(album_title = albums) %>%
+  unnest(tracks)
+```
+Note that I renamed the varible album to album_title, it makes a little more sense to me that way. Another transmation is to unnest the lyrics from the variable tracks, which at that points was a list of lyrics nested by album.
+
+Just because that process could take good 15 minutes to run, I've exported the lyrics to a CSV file, in that case it might be reimported if something goes wrong.
+```{r saving csv file, eval = FALSE}
+write_csv(album_lyrics,"tidytext/data/beatles_lyrics.csv")
+```
+
+
+In order to certify that the file is correct, let's import it and check how's the sctructure of that file.
+```{r reading dataset}
+lyrics <- read_csv("data/beatles_lyrics.csv")
+```
+
+# Tidying the data
+I like to see the shape and the head of the dataframe before go ahead with the analysis.
+```{r checking the dataset}
+kable(lyrics)
+glimpse(lyrics)
+```
+It is possible to see that each observation is a sentence and for that analysis I want to have the words tokenized individually. That's where the package tidytext moves into action.
+
+
+The function to tokenize the text is unnest_tokens. It is possible to apply different types of tokenizer, the most simple one is to tokenize into single words.
+```{r tidying the dataset}
+lyrics <- lyrics %>%
+  unnest_tokens(output = word, input = lyric)
+```
+
+```{r}
+kable(lyrics)
+```
+
+
+```{r ordering albums by releasing date}
+album_names <- c("please please me", "with the beatles", "a hard day's night", "beatles for sale",
+       "help","rubber soul","revolver","sgt pepper's lonely hearts club band", "magical mystery tour",
+       "the beatles (the white album)","yellow submarine", "abbey road", "let it be")  %>%
+  str_to_title()
+
+lyrics <- lyrics %>%
+  filter(!is.na(word)) %>%
+  mutate(album_title = str_to_title(album_title)) %>%
+  mutate(album_title = fct_relevel(album_title, !!!album_names))
+```
+
+
+```{r removing stop words, echo=FALSE}
+lyrics_no_sw <- lyrics %>%
+  anti_join(stop_words,by="word")
+```
+
+```{r wordcloud}
+set.seed(123)
+lyrics_no_sw %>%
+  count(word) %>%
+  with(wordcloud(words = word, 
+                 freq = n,
+                 max.words = 100,
+                 random.order = FALSE
+                 ))
+```
+
+
+```{r word frequency}
+lyrics_no_sw %>%
+  count(word,sort = TRUE) %>%
+  top_n(20,n) %>%
+  ggplot() +
+  geom_bar(aes(x=reorder(word,n),
+               y=n,fill=reorder(word,n)),
+           show.legend = FALSE,
+           stat = "identity") + 
+  scale_fill_viridis_d(direction = -1,
+                       option = "D",
+                       aesthetics = ) +
+  coord_flip() + 
+  labs(x= "Word",
+       y = "Frequency")
+```
+
+
+https://drsimonj.svbtle.com/ordering-categories-within-ggplot2-facets
+
+```{r frequent words by album, fig.height=3}
+ordered_lyrics <- lyrics_no_sw %>%
+  count(album_title,word) %>%
+  group_by(album_title) %>%
+  top_n(10,n) %>%
+  ungroup() %>%
+  arrange(album_title, desc(n)) %>%
+  mutate(order = row_number())
+
+ggplot(ordered_lyrics,
+       aes(desc(order),n,fill=album_title)) + 
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  facet_wrap(~album_title, scales = "free") +
+  theme_bw() +
+  scale_x_continuous(
+    breaks = desc(ordered_lyrics$order),
+    labels = ordered_lyrics$word,
+    expand = c(0,0)
+  ) +
+  coord_flip() + 
+  scale_fill_viridis_d(direction = -1,
+                       option = "D") + 
+  labs(title = "Word Frequency by Album",
+       x = "Word",
+       y = "Frequency")
+```
+
+```{r tf-idf, fig.height=3}
+ordered_tfidf <- lyrics_no_sw %>%
+  count(album_title,word) %>%
+  bind_tf_idf(word,album_title,n) %>%
+  arrange(desc(tf_idf)) %>%
+  group_by(album_title) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(order = row_number())
+
+
+  ggplot(ordered_tfidf,
+         aes(desc(order),tf_idf,fill=album_title)) + 
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  facet_wrap(~album_title, scales = "free") +
+  theme_bw() +
+  scale_x_continuous(
+    breaks = desc(ordered_tfidf$order),
+    labels = ordered_tfidf$word,
+    expand = c(0,0)
+  ) +
+  coord_flip() + 
+  scale_fill_viridis_d(direction = -1,
+                       option = "D") + 
+    labs(title = "Relevant words by Album",
+         x = "Word",
+         y = "TF-IDF")
+
+```
+
+
+```{r sentiment by album}
+nrc <- get_sentiments("nrc")
+
+sentiments <- c("Negative","Anger","Disgust","Sadness","Fear","Anticipation","Surprise","Joy","Trust","Positive")
+
+sentiment_by_album <- lyrics_no_sw %>%
+  inner_join(nrc,by="word") %>%
+  mutate(sentiment = str_to_title(sentiment)) %>%
+  mutate(sentiment = fct_relevel(sentiment, !!!sentiments)) %>%
+  group_by(album_title,sentiment) %>%
+  summarise(n = n()) %>%
+  mutate(freq = n/sum(n)) %>%
+  ungroup()
+```
+
+
+```{r radar plot of sentiment by album, fig.height=3 }
+source("radar-plot.R")
+sentiment_by_album %>%
+  select(album_title,sentiment,freq) %>%
+  spread(sentiment,freq) %>%
+  rename(group = album_title) %>%
+  mutate_if(is.numeric,scale,center=FALSE) %>%
+  as.data.frame() %>%
+  radar_plot(grid.max = 1.8,
+             legend.title = "Album",
+             palette = scale_color_viridis_d(direction = -1,
+                                             option = "D"),
+             labs = labs(title="Sentiment Analaysis of Beatles's Studio Album"),
+             label.gridline.min = FALSE,
+             label.gridline.mid = FALSE,
+             label.gridline.max = FALSE)
+```
+
+```{r heatmap, fig.height=3 }
+sentiment_by_album %>%
+  arrange(album_title,desc(freq)) %>%
+  mutate(album_title = fct_rev(album_title)) %>%
+  ggplot(aes(sentiment,
+             album_title,
+             fill=freq)) +
+  geom_tile() +
+  scale_fill_viridis_c(direction = -1,
+                        option = "D") + 
+  theme(axis.text.x = element_text(angle=45,
+                                   hjust = 1)) + 
+  labs(title = "Heatmap of Sentiment by Album",
+       fill = "Frequency of Sentiment",
+       x = "Sentiment",
+       y = "Album")
+  
+  
+```
+
+
+```{r}
+sentiment_by_track <- lyrics_no_sw %>%
+  inner_join(nrc,by="word") %>%
+  mutate(sentiment = str_to_title(sentiment)) %>%
+  group_by(album_title,track_n,sentiment) %>%
+  summarise(n = n()) %>%
+  mutate(freq = n/sum(n)) %>%
+  ungroup()
+
+```
+
+
+```{r sentiment plot by track by album, fig.height=3}
+sentiment_by_track %>%
+{ggplot(data = .) + 
+  geom_bar(aes(x=factor(track_n),y=freq,group=sentiment,fill=sentiment),
+           stat = "identity",
+           position = "stack") + 
+  facet_wrap(~album_title,
+             scales="free_x",
+             ncol = 3) + 
+  scale_fill_viridis_d(direction = 1,
+                        option = "D") + 
+  labs(title = "Heatmap of Sentiment by Album",
+       fill = "Frequency of Sentiment",
+       x = "Sentiment",
+       y = "Album")}
+  
+
+```
+
+```{r}
+lyrics_untidy <- read_csv("data/beatles_lyrics.csv")
+
+lyrics_ngram <- lyrics_untidy %>%
+  unnest_tokens(two_words,lyric,token="ngrams",n=2) %>%
+  separate(two_words, c("word1","word2"), " ") %>%
+  filter(!word1 %in% stop_words$word & !is.na(word1)) %>%
+  filter(!word2 %in% stop_words$word & !is.na(word2)) %>%
+  unite(two_words,word1,word2, sep = " ")
+```
+
+
+```{r}
+lyrics_ngram %>%
+  count(album_title,two_words) %>%
+  separate(two_words,c("word1","word2"),sep = " ") %>%
+  select(word1,word2,n) %>%
+  filter(n > 10) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(n = 5) +
+  geom_node_point() +
+  geom_node_text(aes(label = name), 
+                 vjust = 1, 
+                 hjust = 1) + 
+  theme_bw()
+  
+```
+
+
+
+
+```{r google nlp, echo=FALSE}
+lyrics_untidy %>% 
+  group_by(album_title,track_title) %>%
+  mutate(lyrics = paste0(lyric,collapse = "\n")) %>%
+  select(album_title,track_title,lyrics) %>%
+  ungroup() %>%
+  distinct() -> lyrics_sentence
+
+# gl_auth("keys/credential.json")
+# 
+# lyrics_sentiment_analysis <- map(lyrics_sentence$lyrics, gl_nlp, 
+#          nlp_type = "analyzeSentiment", 
+#          type = "PLAIN_TEXT", 
+#          language = "en") %>%
+#   map_df(6) %>%
+#   bind_cols(lyrics_sentence) %>% 
+#   bind_cols(lyrics_untidy %>%
+#               group_by(album_title,track_title) %>%
+#               summarise() %>%
+#               select(track_n)
+#     )
+#   write_csv(path = "data/beatles_lyrics_google2.csv")
+lyrics_sentiment_analysis <- read_csv("data/beatles_lyrics_google2.csv")
+```
+
+
+Let's check the songs which have strong sentiment on it. I will consider magnitude over 2. 
+```{r}
+lyrics_sentiment_analysis %>%
+  bind_cols(lyrics_untidy %>%
+              arrange(track_n) %>%
+              group_by(album_title,track_n) %>%
+              summarise() %>%
+              ungroup() %>%
+              select(track_n)) %>%
+  filter(magnitude > 2) %>%
+  arrange(score)
+```
+
+
+
+```{r}
+lyrics_sentiment_analysis %>%
+  mutate(album_title = str_to_title(album_title)) %>%
+  mutate(album_title = fct_relevel(album_title, !!!album_names)) %>%
+  ggplot(aes(x=fct_rev(album_title),y=score,fill = score > 0)) + 
+  geom_bar(stat="identity",
+           show.legend = FALSE) + 
+  coord_flip() +
+  scale_fill_viridis_d(direction = 1,
+                        option = "D") + 
+  theme_bw() + 
+  labs(title = "Beatles's Sentiment Score by Album - Google NLP",
+       x = "Album",
+       y = "Sentiment Score")
+
+```
+
+
+
+```{r}
+lyrics_sentiment_analysis %>%
+  mutate(album_title = str_to_title(album_title)) %>%
+  mutate(album_title = fct_relevel(album_title, !!!album_names)) %>%
+  mutate(final_score = score*magnitude,
+         final_score = scale(final_score,center = FALSE)) %>%
+  group_by(album_title) %>%
+  summarise(final_score = sum(final_score)) %>%
+  ungroup() %>%
+  ggplot(aes(x=album_title,
+             y=final_score,
+             fill=final_score)) + 
+  geom_bar(stat="identity") +
+  scale_fill_viridis_c(direction = 1,
+                        option = "D") + 
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90,
+                                   hjust = 1)) +
+  scale_y_continuous(
+    breaks = (-5:12)
+  ) + 
+  labs(title = "Beatles's Overall Sentiment Score by Album - Google NLP",
+       x = "Album",
+       y = "Overall Sentiment Score",
+       fill = "Album Score")
+```
+
+
+
+
+
+
+
+Why Help and Rubber Soul have so low score? Are those albums's lyrics negative?
