@@ -1,5 +1,5 @@
 ---
-title: "Beatles’s Studio Album Text Mining Analysis"
+title: "Beatles’s Studio Albums Text Mining Analysis"
 author: "Douglas Zickuhr"
 date: 2018-08-29T19:59:00+00:00
 categories: ["R"]
@@ -188,24 +188,38 @@ kable(head(lyrics))</code></pre>
 </tr>
 </tbody>
 </table>
-<pre class="r"><code>album_names &lt;- c(&quot;please please me&quot;, &quot;with the beatles&quot;, &quot;a hard day&#39;s night&quot;, &quot;beatles for sale&quot;,
-       &quot;help&quot;,&quot;rubber soul&quot;,&quot;revolver&quot;,&quot;sgt pepper&#39;s lonely hearts club band&quot;, &quot;magical mystery tour&quot;,
-       &quot;the beatles (the white album)&quot;,&quot;yellow submarine&quot;, &quot;abbey road&quot;, &quot;let it be&quot;)  %&gt;%
+<p>Before go any further there is something I’d like to do. Make sure that the albums are going to be arranged according to their releasing date. I had done that already when I was requesting the data to Genius, so I am going to use the same vector but now applying the function str_to_title. This is just because I wanted to see “Please Please Me” on my plots and not “please please me”, for intance.</p>
+<p>It’s nice that you can relevel the factors with fct_relevel from forcats package using !!! (should I call that bang-bang-bang?) to set the parameter. In that case, my parameter is my character vector with the albums arranged by release date and looking nicer because of the str_to_title function.</p>
+<pre class="r"><code>album_names &lt;- albums %&gt;%
   str_to_title()
 
 lyrics &lt;- lyrics %&gt;%
   filter(!is.na(word)) %&gt;%
   mutate(album_title = str_to_title(album_title)) %&gt;%
   mutate(album_title = fct_relevel(album_title, !!!album_names))</code></pre>
-<pre class="r"><code>set.seed(123)
-lyrics_no_sw %&gt;%
-  count(word) %&gt;%
-  with(wordcloud(words = word, 
-                 freq = n,
-                 max.words = 100,
-                 random.order = FALSE
-                 ))</code></pre>
-<p><img src="/post/beatles-lyrics-text-mining-analysis_files/figure-html/wordcloud-1.png" width="672" /></p>
+<p>Please note that I’ve removed the NA words. I don’t quite understand why some words were tokenised as NA. That’s definitely something for looking through in the future.</p>
+</div>
+<div id="words-frequency" class="section level1">
+<h1>Words Frequency</h1>
+<p>That’s pretty much the bread and butter of text mining analysis. It’s basically count the number of words that appears in the text and arrange them desc.</p>
+<pre class="r"><code>lyrics %&gt;%
+  count(word,sort = TRUE) %&gt;%
+  top_n(20,n) %&gt;%
+  ggplot() +
+  geom_bar(aes(x=reorder(word,n),
+               y=n,fill=reorder(word,n)),
+           show.legend = FALSE,
+           stat = &quot;identity&quot;) + 
+  scale_fill_viridis_d(direction = -1,
+                       option = &quot;D&quot;,
+                       aesthetics = ) +
+  coord_flip() + 
+  labs(title = &quot;Beatles&#39;s Studio Albums Word Frequency&quot;,
+       x= &quot;Word&quot;,
+       y = &quot;Frequency&quot;)</code></pre>
+<p><img src="/post/beatles-lyrics-text-mining-analysis_files/figure-html/unnamed-chunk-1-1.png" width="672" /></p>
+<p>It looks like some words like “you”, “I” and “the” are very common and it does make sense, because those are used the in every sentence construction in English. The problem is that they don’t explain too much about the mining of the lyrics. Let’s try to remove these words from the analisys by applying an “anti-join” with the stop_words dataframe, which is embedded in the tidytext package.</p>
+<p>And let’s run the same code again but now with the lyrics_no_sw dataset.</p>
 <pre class="r"><code>lyrics_no_sw %&gt;%
   count(word,sort = TRUE) %&gt;%
   top_n(20,n) %&gt;%
@@ -218,9 +232,20 @@ lyrics_no_sw %&gt;%
                        option = &quot;D&quot;,
                        aesthetics = ) +
   coord_flip() + 
-  labs(x= &quot;Word&quot;,
+  labs(title = &quot;Beatles&#39;s Studio Albums Word Frequency - No stop words&quot;,
+       x= &quot;Word&quot;,
        y = &quot;Frequency&quot;)</code></pre>
 <p><img src="/post/beatles-lyrics-text-mining-analysis_files/figure-html/word%20frequency-1.png" width="672" /></p>
+<p>It looks way meaningful now. Words like “love”, “girl”, “yeah”, and “time” seems to be very frequent on Beatles’s songs. Some words are not “real words” and don’t bring any explanation on the data. Examples are “la”, “ah” and weirdly, “tit”. Later I realised that Paul, John and George repeat the word tit nearly 60 times on</p>
+<pre class="r"><code>set.seed(123)
+lyrics_no_sw %&gt;%
+  count(word) %&gt;%
+  with(wordcloud(words = word, 
+                 freq = n,
+                 max.words = 100,
+                 random.order = FALSE
+                 ))</code></pre>
+<p><img src="/post/beatles-lyrics-text-mining-analysis_files/figure-html/wordcloud-1.png" width="672" /></p>
 <p><a href="https://drsimonj.svbtle.com/ordering-categories-within-ggplot2-facets" class="uri">https://drsimonj.svbtle.com/ordering-categories-within-ggplot2-facets</a></p>
 <pre class="r"><code>ordered_lyrics &lt;- lyrics_no_sw %&gt;%
   count(album_title,word) %&gt;%
@@ -371,7 +396,7 @@ lyrics_ngram &lt;- lyrics_untidy %&gt;%
                  vjust = 1, 
                  hjust = 1) + 
   theme_bw()</code></pre>
-<p><img src="/post/beatles-lyrics-text-mining-analysis_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+<p><img src="/post/beatles-lyrics-text-mining-analysis_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
 <pre><code>## Parsed with column specification:
 ## cols(
 ##   magnitude = col_double(),
@@ -417,7 +442,7 @@ lyrics_ngram &lt;- lyrics_untidy %&gt;%
   labs(title = &quot;Beatles&#39;s Sentiment Score by Album - Google NLP&quot;,
        x = &quot;Album&quot;,
        y = &quot;Sentiment Score&quot;)</code></pre>
-<p><img src="/post/beatles-lyrics-text-mining-analysis_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<p><img src="/post/beatles-lyrics-text-mining-analysis_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
 <pre class="r"><code>lyrics_sentiment_analysis %&gt;%
   mutate(album_title = str_to_title(album_title)) %&gt;%
   mutate(album_title = fct_relevel(album_title, !!!album_names)) %&gt;%
@@ -442,6 +467,6 @@ lyrics_ngram &lt;- lyrics_untidy %&gt;%
        x = &quot;Album&quot;,
        y = &quot;Overall Sentiment Score&quot;,
        fill = &quot;Album Score&quot;)</code></pre>
-<p><img src="/post/beatles-lyrics-text-mining-analysis_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<p><img src="/post/beatles-lyrics-text-mining-analysis_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
 <p>Why Help and Rubber Soul have so low score? Are those albums’s lyrics negative?</p>
 </div>

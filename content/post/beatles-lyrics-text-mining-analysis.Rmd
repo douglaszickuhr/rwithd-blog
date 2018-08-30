@@ -1,5 +1,5 @@
 ---
-title: "Beatles’s Studio Album Text Mining Analysis"
+title: "Beatles’s Studio Albums Text Mining Analysis"
 author: "Douglas Zickuhr"
 date: 2018-08-29T19:59:00+00:00
 categories: ["R"]
@@ -37,7 +37,7 @@ library(geniusR)
 # Gathering the data
 
 The first task was to gather all the information I needed. There are several pages with lyrics but genius seems to be on of the most utilised. In order to request that information, I've used a package called geniusR.
-```{r genius parameters, eval = FALSE}
+```{r genius parameters}
 # Creating variables for artist and albums to be requested to geniusR
 artist <- "the beatles"
 albums <- c("please please me", "with the beatles", "a hard day's night", "beatles for sale",
@@ -98,8 +98,30 @@ lyrics <- lyrics %>%
   mutate(album_title = str_to_title(album_title)) %>%
   mutate(album_title = fct_relevel(album_title, !!!album_names))
 ```
-Please note that I've removed the NA words. I don't quite understand why some words were identified by NA. That should 
+Please note that I've removed the NA words. I don't quite understand why some words were tokenised as NA. That's definitely something for looking through in the future.
 
+# Words Frequency
+That's pretty much the bread and butter of text mining analysis. It's basically count the number of words that appears in the text and arrange them desc. 
+
+```{r}
+lyrics %>%
+  count(word,sort = TRUE) %>%
+  top_n(20,n) %>%
+  ggplot() +
+  geom_bar(aes(x=reorder(word,n),
+               y=n,fill=reorder(word,n)),
+           show.legend = FALSE,
+           stat = "identity") + 
+  scale_fill_viridis_d(direction = -1,
+                       option = "D",
+                       aesthetics = ) +
+  coord_flip() + 
+  labs(title = "Beatles's Studio Albums Word Frequency",
+       x= "Word",
+       y = "Frequency")
+```
+
+It looks like some words like "you", "I" and "the" are very common and it does make sense, because those are used the in every sentence construction in English. The problem is that they don't explain too much about the mining of the lyrics. Let's try to remove these words from the analisys by applying an "anti-join" with the stop_words dataframe, which is embedded in the tidytext package.
 
 ```{r removing stop words, echo=FALSE}
 lyrics_no_sw <- lyrics %>%
@@ -107,17 +129,7 @@ lyrics_no_sw <- lyrics %>%
             by="word")
 ```
 
-```{r wordcloud}
-set.seed(123)
-lyrics_no_sw %>%
-  count(word) %>%
-  with(wordcloud(words = word, 
-                 freq = n,
-                 max.words = 100,
-                 random.order = FALSE
-                 ))
-```
-
+And let's run the same code again but now with the lyrics_no_sw dataset.
 
 ```{r word frequency}
 lyrics_no_sw %>%
@@ -132,10 +144,23 @@ lyrics_no_sw %>%
                        option = "D",
                        aesthetics = ) +
   coord_flip() + 
-  labs(x= "Word",
+  labs(title = "Beatles's Studio Albums Word Frequency - No stop words",
+       x= "Word",
        y = "Frequency")
 ```
 
+It looks way meaningful now. Words like "love", "girl", "yeah", and "time" seems to be very frequent on Beatles's songs. Some words are not "real words" and don't bring any explanation on the data. Examples are "la", "ah" and weirdly, "tit". Later I realised that Paul, John and George repeat the word tit nearly 60 times on 
+
+```{r wordcloud}
+set.seed(123)
+lyrics_no_sw %>%
+  count(word) %>%
+  with(wordcloud(words = word, 
+                 freq = n,
+                 max.words = 100,
+                 random.order = FALSE
+                 ))
+```
 
 https://drsimonj.svbtle.com/ordering-categories-within-ggplot2-facets
 
