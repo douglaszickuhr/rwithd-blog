@@ -1,10 +1,11 @@
 baseurl = "http://rwithd.com/"
 title = "RWithD"
 theme = "ghostwriter"
-languageCode = "en-us"
-copyright = "My Name"
+languageCode = "en-ie"
+copyright = "Douglas Zickuhr"
 disqusShortname = "XXX"
 googleAnalytics = "XXX"
+enableEmoji = true
 
 [Privacy]
 
@@ -33,14 +34,14 @@ googleAnalytics = "XXX"
     opengraph = true
     shareTwitter = true
     shareFacebook = true
-    shareGooglePlus = true
-    shareLinkedIn = false
+    shareGooglePlus = false
+    shareLinkedIn = true
     dateFormat = "Mon, Jan 2, 2006"
     highlightJsUrl = ""
     highlightJsLocalUrl = ""
 
 [Permalinks]
-    post = "/:year/:month/:day/:filename/"
+    post = "/:slug/"
 
 [[menu.main]]
     name = "Blog"
