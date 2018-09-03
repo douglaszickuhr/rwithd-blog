@@ -3,7 +3,7 @@ title: "Beatles’s Studio Albums Text Mining Analysis"
 author: "Douglas Zickuhr"
 date: 2018-08-29T19:59:00+00:00
 categories: ["R"]
-tags: ["R Markdown", "textmining", "tidytext"]
+tags: ["R", "tidyverse", "textmining", "tidytext"]
 ---
 
 
@@ -15,8 +15,8 @@ tags: ["R Markdown", "textmining", "tidytext"]
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
 <p>The Beatles is probably the most well known rock band from all times. They’ve been recognised by their inventive music and the revolution they’ve caused on human culture. Well, I don’t think that they need further introduction.</p>
-<p>Having that in mind and considering the fact that I’ve had just finished to read the book Text Mining with R by Julia Silge and David Robson, I decided that would be a good exercise to apply some of the techinques and examples from that book on this text mining analysis.</p>
-<p>I will be essentially using the tidiverse for data manipulation and visualisation and tidytext package for text mining analysis.</p>
+<p>Having that in mind and considering the fact that I’ve had just finished to read the book Text Mining with R by Julia Silge and David Robson, which is a great reading by the way, I thought that would be a good exercise to apply some of the techinques and brilliant examples from that book on a text mining analysis over Beatle’s song lyrics.</p>
+<p>I essentially used the tidiverse for data manipulation and visualisation and tidytext package for text mining analysis.</p>
 </div>
 <div id="gathering-the-data" class="section level1">
 <h1>Gathering the data</h1>
@@ -188,8 +188,8 @@ kable(head(lyrics))</code></pre>
 </tr>
 </tbody>
 </table>
-<p>Before go any further there is something I’d like to do. Make sure that the albums are going to be arranged according to their releasing date. I had done that already when I was requesting the data to Genius, so I am going to use the same vector but now applying the function str_to_title. This is just because I wanted to see “Please Please Me” on my plots and not “please please me”, for intance.</p>
-<p>It’s nice that you can relevel the factors with fct_relevel from forcats package using !!! (should I call that bang-bang-bang?) to set the parameter. In that case, my parameter is my character vector with the albums arranged by release date and looking nicer because of the str_to_title function.</p>
+<p>Before go any further there are two things I’d like to do. Firstly, to make sure that the albums are going to be arranged according to their releasing date. I previously created a character vector respecting that order when requesting the data to Genius, so I am going to use the same vector but now applying the function str_to_title. This is just because I wanted to see “Please Please Me” on my plots and not “please please me”, for intance.</p>
+<p>It’s nice that you can relevel the factors with fct_relevel from forcats package using !!! (should I call that bang-bang-bang?) to set the levels to be considered. In that case, my parameter is my character vector with the albums arranged by release date and looking nicer because of the str_to_title function.</p>
 <pre class="r"><code>album_names &lt;- albums %&gt;%
   str_to_title()
 
@@ -199,8 +199,11 @@ lyrics &lt;- lyrics %&gt;%
   mutate(album_title = fct_relevel(album_title, !!!album_names))</code></pre>
 <p>Please note that I’ve removed the NA words. I don’t quite understand why some words were tokenised as NA. That’s definitely something for looking through in the future.</p>
 </div>
-<div id="words-frequency" class="section level1">
-<h1>Words Frequency</h1>
+<div id="visualising-the-data" class="section level1">
+<h1>Visualising the data</h1>
+<p>We already have the text tidied so it’s time to create some visualisations. Let’s start with words frequency.</p>
+<div id="words-frequency" class="section level2">
+<h2>Words Frequency</h2>
 <p>That’s pretty much the bread and butter of text mining analysis. It’s basically count the number of words that appears in the text and arrange them desc.</p>
 <pre class="r"><code>lyrics %&gt;%
   count(word,sort = TRUE) %&gt;%
@@ -469,4 +472,5 @@ lyrics_ngram &lt;- lyrics_untidy %&gt;%
        fill = &quot;Album Score&quot;)</code></pre>
 <p><img src="/post/beatles-lyrics-text-mining-analysis_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
 <p>Why Help and Rubber Soul have so low score? Are those albums’s lyrics negative?</p>
+</div>
 </div>

@@ -3,7 +3,7 @@ title: "Beatles’s Studio Albums Text Mining Analysis"
 author: "Douglas Zickuhr"
 date: 2018-08-29T19:59:00+00:00
 categories: ["R"]
-tags: ["R Markdown", "textmining", "tidytext"]
+tags: ["R", "tidyverse", "textmining", "tidytext"]
 ---
 
 ![](/post/2018-08-29-beatles_files/beatles68.jpg)
@@ -11,9 +11,9 @@ tags: ["R Markdown", "textmining", "tidytext"]
 # Introduction
 The Beatles is probably the most well known rock band from all times. They've been recognised by their inventive music and the revolution they've caused on human culture. Well, I don't think that they need further introduction. 
 
-Having that in mind and considering the fact that I've had just finished to read the book Text Mining with R by Julia Silge and David Robson, I decided that would be a good exercise to apply some of the techinques and examples from that book on this text mining analysis.
+Having that in mind and considering the fact that I've had just finished to read the book Text Mining with R by Julia Silge and David Robson, which is a great reading by the way, I thought that would be a good exercise to apply some of the techinques and brilliant examples from that book on a text mining analysis over Beatle's song lyrics.
 
-I will be essentially using the tidiverse for data manipulation and visualisation and tidytext package for text mining analysis.
+I essentially used the tidiverse for data manipulation and visualisation and tidytext package for text mining analysis.
 
 
 ```{r setup, include=FALSE}
@@ -86,9 +86,9 @@ lyrics <- lyrics %>%
 kable(head(lyrics))
 ```
 
-Before go any further there is something I'd like to do. Make sure that the albums are going to be arranged according to their releasing date. I had done that already when I was requesting the data to Genius, so I am going to use the same vector but now applying the function str_to_title. This is just because I wanted to see "Please Please Me" on my plots and not "please please me", for intance.
+Before go any further there are two things I'd like to do. Firstly, to make sure that the albums are going to be arranged according to their releasing date. I previously created a character vector respecting that order when requesting the data to Genius, so I am going to use the same vector but now applying the function str_to_title. This is just because I wanted to see "Please Please Me" on my plots and not "please please me", for intance.
 
-It's nice that you can relevel the factors with fct_relevel from forcats package using !!! (should I call that bang-bang-bang?) to set the parameter. In that case, my parameter is my character vector with the albums arranged by release date and looking nicer because of the str_to_title function.
+It's nice that you can relevel the factors with fct_relevel from forcats package using !!! (should I call that bang-bang-bang?) to set the levels to be considered. In that case, my parameter is my character vector with the albums arranged by release date and looking nicer because of the str_to_title function.
 ```{r ordering albums by releasing date}
 album_names <- albums %>%
   str_to_title()
@@ -100,7 +100,10 @@ lyrics <- lyrics %>%
 ```
 Please note that I've removed the NA words. I don't quite understand why some words were tokenised as NA. That's definitely something for looking through in the future.
 
-# Words Frequency
+# Visualising the data
+We already have the text tidied so it's time to create some visualisations. Let's start with words frequency. 
+
+## Words Frequency
 That's pretty much the bread and butter of text mining analysis. It's basically count the number of words that appears in the text and arrange them desc. 
 
 ```{r}
